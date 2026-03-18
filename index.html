@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hungry Giraffe</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="game-shell">
+    <section class="panel intro-panel">
+      <p class="eyebrow">Browser mini game</p>
+      <h1>Hungry Giraffe</h1>
+      <p class="subtitle">
+        Survive each 15-second level, grab leaves, dodge apples, and jump over squirrels.
+        At the end of every level, fight an elephant boss by shooting with the giraffe's boss blaster.
+      </p>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <span class="stat-label">Score</span>
+          <strong id="score">0</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Leaves eaten</span>
+          <strong id="leaves-eaten">0</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Apples eaten</span>
+          <strong id="apples-hit">0</strong>
+        </article>
+      </div>
+
+      <div class="meter-block">
+        <div class="meter-label-row">
+          <span>Health</span>
+          <span id="health-value">65%</span>
+        </div>
+        <div class="meter-track">
+          <div class="meter-fill health-fill" id="health-fill"></div>
+        </div>
+      </div>
+
+      <div class="meter-block">
+        <div class="meter-label-row">
+          <span>Sickness</span>
+          <span id="sickness-value">35%</span>
+        </div>
+        <div class="meter-track">
+          <div class="meter-fill sickness-fill" id="sickness-fill"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <span>Move with <kbd>A</kbd> <kbd>D</kbd> or <kbd>Left</kbd> <kbd>Right</kbd>, jump with <kbd>W</kbd> <kbd>Up</kbd> or <kbd>Space</kbd>, and shoot bosses with <kbd>F</kbd> or <kbd>Enter</kbd></span>
+        <button id="restart-button" type="button">Restart game</button>
+      </div>
+    </section>
+
+    <section class="panel stage-panel">
+      <div class="stage-summary">
+        <span id="level-readout">Level 1</span>
+        <span id="phase-readout">15s until boss</span>
+      </div>
+      <canvas id="game" width="800" height="520" aria-label="Hungry Giraffe game area"></canvas>
+      <section class="boss-panel hidden" id="boss-panel" aria-live="polite">
+        <div class="meter-block compact-meter">
+          <div class="meter-label-row">
+            <span>Elephant boss</span>
+            <span id="boss-health-value">100 / 100</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill boss-fill" id="boss-health-fill"></div>
+          </div>
+        </div>
+
+        <div class="meter-block compact-meter">
+          <div class="meter-label-row">
+            <span>Giraffe boss health</span>
+            <span id="boss-giraffe-value">50 / 50</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill giraffe-boss-fill" id="boss-giraffe-fill"></div>
+          </div>
+        </div>
+      </section>
+      <div class="status-banner" id="status-banner">Survive the level, then get ready for the elephant boss.</div>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>

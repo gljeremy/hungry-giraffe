@@ -1,0 +1,237 @@
+:root {
+  color-scheme: light;
+  --bg: #f8f2d9;
+  --panel: rgba(255, 252, 240, 0.94);
+  --panel-border: #d8c58c;
+  --text: #4f3d1f;
+  --accent: #5d9d2b;
+  --accent-dark: #3c6e1d;
+  --danger: #b56f2c;
+  --danger-dark: #7e4a18;
+  --shadow: rgba(90, 66, 23, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top, #fff7db 0%, #f4e2aa 45%, #ebcb75 100%);
+}
+
+.game-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 24px auto;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  border-radius: 24px;
+  box-shadow: 0 18px 42px var(--shadow);
+}
+
+.intro-panel {
+  padding: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.subtitle {
+  margin: 14px 0 24px;
+  line-height: 1.55;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.stat-card {
+  padding: 14px 12px;
+  background: #fff8e6;
+  border: 1px solid #ead8a3;
+  border-radius: 18px;
+}
+
+.stat-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.5rem;
+}
+
+.stat-label {
+  font-size: 0.82rem;
+  color: #7b6437;
+}
+
+.meter-block + .meter-block {
+  margin-top: 16px;
+}
+
+.meter-label-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.meter-track {
+  height: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #ebddae;
+  border: 1px solid #ddcb90;
+}
+
+.meter-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  transition: width 120ms linear;
+}
+
+.health-fill {
+  background: linear-gradient(90deg, #81d83e 0%, #4d9c20 100%);
+}
+
+.sickness-fill {
+  background: linear-gradient(90deg, #f2af59 0%, #c1752d 100%);
+}
+
+.boss-fill {
+  background: linear-gradient(90deg, #f26f5c 0%, #b93128 100%);
+}
+
+.giraffe-boss-fill {
+  background: linear-gradient(90deg, #6bd7ff 0%, #2f8cca 100%);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px dashed #d9c68d;
+}
+
+kbd {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid #b79c5d;
+  border-bottom-width: 3px;
+  border-radius: 8px;
+  background: #fffaf0;
+  font-size: 0.9rem;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fffef5;
+  background: linear-gradient(180deg, #6eaf34 0%, #487f1e 100%);
+  box-shadow: 0 8px 16px rgba(72, 127, 30, 0.22);
+}
+
+button:hover {
+  filter: brightness(1.04);
+}
+
+.stage-panel {
+  padding: 18px;
+}
+
+.stage-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #6a552d;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  border: 2px solid #b7d2e9;
+  background: linear-gradient(180deg, #cbeeff 0%, #eaf9ff 58%, #cce889 58%, #99c754 100%);
+}
+
+.status-banner {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff7df;
+  border: 1px solid #e8d18f;
+  font-weight: 700;
+}
+
+.boss-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff5ea;
+  border: 1px solid #e8c89b;
+}
+
+.compact-meter + .compact-meter {
+  margin-top: 12px;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 930px) {
+  .game-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .game-shell {
+    width: min(100% - 20px, 1180px);
+    margin: 10px auto 20px;
+  }
+
+  .intro-panel,
+  .stage-panel {
+    padding: 16px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
