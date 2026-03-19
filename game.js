@@ -14,6 +14,8 @@ const healthFill = document.getElementById("health-fill");
 const sicknessFill = document.getElementById("sickness-fill");
 const statusBanner = document.getElementById("status-banner");
 const restartButton = document.getElementById("restart-button");
+const animalPicker = document.getElementById("animal-picker");
+const animalChoices = document.querySelectorAll(".animal-choice");
 const levelReadout = document.getElementById("level-readout");
 const phaseReadout = document.getElementById("phase-readout");
 const bossPanel = document.getElementById("boss-panel");
@@ -23,6 +25,56 @@ const bossGiraffeValue = document.getElementById("boss-giraffe-value");
 const bossGiraffeFill = document.getElementById("boss-giraffe-fill");
 
 const LEVEL_DURATION = 15;
+const ANIMAL_CONFIG = {
+  giraffe: {
+    label: "Giraffe",
+    speed: 360,
+    jumpStrength: 780,
+    regularMaxHealth: 65,
+    bossHealth: 50,
+    leafHeal: 12,
+    appleDamage: 20,
+    bossShotDamage: 10,
+    giraffeShootInterval: 0.38,
+    bossDamageMultiplier: 1.15
+  },
+  tiger: {
+    label: "Tiger",
+    speed: 560,
+    jumpStrength: 760,
+    regularMaxHealth: 55,
+    bossHealth: 40,
+    leafHeal: 11,
+    appleDamage: 18,
+    bossShotDamage: 10,
+    giraffeShootInterval: 0.38,
+    bossDamageMultiplier: 1
+  },
+  "baby-elephant": {
+    label: "Baby Elephant",
+    speed: 300,
+    jumpStrength: 680,
+    regularMaxHealth: 82,
+    bossHealth: 60,
+    leafHeal: 10,
+    appleDamage: 12,
+    bossShotDamage: 10,
+    giraffeShootInterval: 0.42,
+    bossDamageMultiplier: 0.75
+  },
+  llama: {
+    label: "Llama",
+    speed: 330,
+    jumpStrength: 920,
+    regularMaxHealth: 60,
+    bossHealth: 45,
+    leafHeal: 10,
+    appleDamage: 18,
+    bossShotDamage: 8,
+    giraffeShootInterval: 0.28,
+    bossDamageMultiplier: 1
+  }
+};
 
 const stage = {
   width: canvas.width,
@@ -57,11 +109,29 @@ const state = {
   invincibilityTimer: 0,
   level: 1,
   phase: "level",
-  phaseTimeRemaining: LEVEL_DURATION
+  phaseTimeRemaining: LEVEL_DURATION,
+  bossIntroTimer: 0,
+  selectedAnimal: null,
+  selectionOpen: true,
+  abilityEffects: []
 };
+
+function getPlayerConfig() {
+  return ANIMAL_CONFIG[state.selectedAnimal || "giraffe"];
+}
+
+function spawnAbilityEffect(kind, x, y) {
+  state.abilityEffects.push({
+    kind,
+    x,
+    y,
+    timer: 0.45
+  });
+}
 
 function createGiraffe() {
   const height = 154;
+  const config = getPlayerConfig();
 
   return {
     x: stage.width / 2 - 34,
@@ -69,10 +139,10 @@ function createGiraffe() {
     baseY: stage.groundY - height,
     width: 68,
     height,
-    speed: 360,
+    speed: config.speed,
     velocityY: 0,
     gravity: 1700,
-    jumpStrength: 760,
+    jumpStrength: config.jumpStrength,
     onGround: true,
     fallenTimer: 0
   };
@@ -88,6 +158,7 @@ function clearLevelEntities() {
   state.squirrelSpawnTimer = 0;
   state.powerUpSpawnTimer = 0;
   state.invincibilityTimer = 0;
+  state.abilityEffects = [];
   state.boss = null;
 }
 
@@ -101,6 +172,8 @@ function resetGiraffePosition() {
 }
 
 function startLevel(levelNumber, isFreshGame = false) {
+  const config = getPlayerConfig();
+
   state.level = levelNumber;
   state.phase = "level";
   state.phaseTimeRemaining = LEVEL_DURATION;
@@ -108,9 +181,9 @@ function startLevel(levelNumber, isFreshGame = false) {
   resetGiraffePosition();
 
   if (isFreshGame) {
-    state.health = 65;
+    state.health = config.regularMaxHealth;
   } else {
-    state.health = Math.min(100, state.health + 12);
+    state.health = Math.min(config.regularMaxHealth, state.health + 12);
   }
 
   statusBanner.textContent = `Level ${state.level}: survive 15 seconds, then face the elephant boss.`;
@@ -118,8 +191,11 @@ function startLevel(levelNumber, isFreshGame = false) {
 }
 
 function startBossFight() {
+  const config = getPlayerConfig();
+
   state.phase = "boss";
   state.phaseTimeRemaining = 0;
+  state.bossIntroTimer = 0;
   state.items = [];
   state.squirrels = [];
   state.powerUps = [];
@@ -133,15 +209,32 @@ function startBossFight() {
     y: 108,
     width: 168,
     height: 118,
-    health: 100,
-    maxHealth: 100,
-    giraffeHealth: 50,
-    maxGiraffeHealth: 50,
+    health: 100 + (state.level - 1) * 10,
+    maxHealth: 100 + (state.level - 1) * 10,
+    giraffeHealth: config.bossHealth,
+    maxGiraffeHealth: config.bossHealth,
+    giraffeShootTimer: 0,
+    giraffeShootInterval: config.giraffeShootInterval,
     shootTimer: 0,
-    shootInterval: Math.max(0.8, 1.65 - (state.level - 1) * 0.08)
+    shootInterval: Math.max(0.5, 1.65 - (state.level - 1) * 0.14)
   };
 
   statusBanner.textContent = "Boss fight! Shoot with F or Enter and dodge the elephant's blasts.";
+  updateHud();
+}
+
+function startBossIntro() {
+  state.phase = "boss-intro";
+  state.phaseTimeRemaining = 0;
+  state.bossIntroTimer = 1.8;
+  state.items = [];
+  state.squirrels = [];
+  state.powerUps = [];
+  state.giraffeBullets = [];
+  state.elephantBullets = [];
+  state.invincibilityTimer = 0;
+  resetGiraffePosition();
+  statusBanner.textContent = `Level ${state.level} boss fight coming up!`;
   updateHud();
 }
 
@@ -155,22 +248,47 @@ function resetGame() {
   startLevel(1, true);
 }
 
+function openAnimalPicker() {
+  if (!state.giraffe) {
+    state.giraffe = createGiraffe();
+  }
+
+  clearLevelEntities();
+  resetGiraffePosition();
+  state.selectionOpen = true;
+  state.running = false;
+  animalPicker.classList.remove("hidden");
+  statusBanner.textContent = "Pick your animal to start the game.";
+  updateHud();
+}
+
+function startWithAnimal(animal) {
+  state.selectedAnimal = animal;
+  state.selectionOpen = false;
+  animalPicker.classList.add("hidden");
+  resetGame();
+}
+
 function updateHud() {
-  const health = Math.max(0, Math.min(100, state.health));
-  const sickness = 100 - health;
+  const config = getPlayerConfig();
+  const health = Math.max(0, Math.min(config.regularMaxHealth, state.health));
+  const healthPercent = (health / config.regularMaxHealth) * 100;
+  const sickness = 100 - healthPercent;
 
   scoreValue.textContent = String(state.score);
   leavesValue.textContent = String(state.leavesEaten);
   applesValue.textContent = String(state.applesHit);
-  healthValue.textContent = `${Math.round(health)}%`;
+  healthValue.textContent = `${Math.round(health)} / ${config.regularMaxHealth}`;
   sicknessValue.textContent = `${Math.round(sickness)}%`;
-  healthFill.style.width = `${health}%`;
+  healthFill.style.width = `${healthPercent}%`;
   sicknessFill.style.width = `${sickness}%`;
 
   levelReadout.textContent = `Level ${state.level}`;
   phaseReadout.textContent = state.phase === "boss"
-    ? "Boss fight"
-    : `${Math.max(0, Math.ceil(state.phaseTimeRemaining))}s until boss`;
+    ? `Level ${state.level} boss fight`
+    : state.phase === "boss-intro"
+      ? `Level ${state.level} boss incoming`
+      : `Level ${state.level} boss in ${Math.max(0, Math.ceil(state.phaseTimeRemaining))}s`;
 
   if (state.phase === "boss" && state.boss) {
     bossPanel.classList.remove("hidden");
@@ -221,7 +339,7 @@ function addPowerUp() {
   });
 }
 
-function endGame(message = "The giraffe is too sick. Press restart to try again.") {
+function endGame(message = "Your animal is too sick. Press restart to try again.") {
   state.running = false;
   statusBanner.textContent = message;
 }
@@ -243,6 +361,21 @@ function getGiraffeBounds() {
     y: giraffe.y + 4,
     width: giraffe.width - 18,
     height: giraffe.height - 4
+  };
+}
+
+function getPickupBounds() {
+  const hazardBounds = getGiraffeBounds();
+
+  if (state.selectedAnimal !== "giraffe" || state.giraffe.fallenTimer > 0 || state.phase !== "level") {
+    return hazardBounds;
+  }
+
+  return {
+    x: hazardBounds.x - 8,
+    y: hazardBounds.y - 24,
+    width: hazardBounds.width + 16,
+    height: hazardBounds.height + 24
   };
 }
 
@@ -269,17 +402,25 @@ function intersects(a, b) {
 }
 
 function handleItemCollision(item) {
+  const config = getPlayerConfig();
+
   if (item.type === "leaf") {
-    state.health = Math.min(100, state.health + 12);
+    state.health = Math.min(config.regularMaxHealth, state.health + config.leafHeal);
     state.score += 10;
     state.leavesEaten += 1;
-    statusBanner.textContent = "Crunch! The giraffe feels stronger after eating a leaf.";
+    if (state.selectedAnimal === "giraffe") {
+      spawnAbilityEffect("giraffe-reach", state.giraffe.x + 34, state.giraffe.y + 26);
+    }
+    statusBanner.textContent = "Crunch! Your animal feels stronger after eating a leaf.";
     return;
   }
 
-  state.health = Math.max(0, state.health - 18);
+  state.health = Math.max(0, state.health - config.appleDamage);
   state.applesHit += 1;
-  statusBanner.textContent = "Oof! Apple hit. The giraffe feels a little sicker.";
+  if (state.selectedAnimal === "baby-elephant") {
+    spawnAbilityEffect("elephant-armor", state.giraffe.x + 34, state.giraffe.y + 70);
+  }
+  statusBanner.textContent = "Oof! Apple hit. Your animal feels a little sicker.";
 }
 
 function jumpGiraffe() {
@@ -291,6 +432,9 @@ function jumpGiraffe() {
 
   giraffe.velocityY = -giraffe.jumpStrength;
   giraffe.onGround = false;
+  if (state.selectedAnimal === "llama") {
+    spawnAbilityEffect("llama-poof", giraffe.x + 30, giraffe.baseY + giraffe.height - 8);
+  }
   statusBanner.textContent = "Boing! Hop over the squirrels.";
 }
 
@@ -301,20 +445,23 @@ function knockDownGiraffe() {
   giraffe.velocityY = 0;
   giraffe.y = giraffe.baseY;
   giraffe.onGround = true;
-  statusBanner.textContent = "Oops! A squirrel tripped the giraffe for 2 seconds.";
+  statusBanner.textContent = "Oops! A squirrel tripped your animal for 2 seconds.";
 }
 
 function collectPowerUp() {
   state.invincibilityTimer = 3;
-  statusBanner.textContent = "Invincibility power! Squirrels cannot knock the giraffe down for 3 seconds.";
+  if (state.selectedAnimal === "giraffe") {
+    spawnAbilityEffect("giraffe-reach", state.giraffe.x + 34, state.giraffe.y + 20);
+  }
+  statusBanner.textContent = "Invincibility power! Squirrels cannot knock your animal down for 3 seconds.";
 }
 
 function fireGiraffeBullet() {
-  const giraffe = state.giraffe;
-
-  if (state.phase !== "boss" || !state.boss) {
+  if (state.phase !== "boss" || !state.boss || state.boss.giraffeShootTimer > 0) {
     return;
   }
+
+  const giraffe = state.giraffe;
 
   state.giraffeBullets.push({
     x: giraffe.x + giraffe.width - 6,
@@ -322,9 +469,14 @@ function fireGiraffeBullet() {
     width: 18,
     height: 6,
     velocityX: 440,
-    velocityY: -180
+    velocityY: -180,
+    damage: getPlayerConfig().bossShotDamage
   });
 
+  state.boss.giraffeShootTimer = state.boss.giraffeShootInterval;
+  if (state.selectedAnimal === "llama") {
+    spawnAbilityEffect("llama-poof", giraffe.x + giraffe.width + 12, giraffe.y + 38);
+  }
   statusBanner.textContent = "Zap! Keep shooting the elephant boss.";
 }
 
@@ -437,12 +589,15 @@ function updateLevelPhase(deltaSeconds) {
   }
 
   const giraffeBounds = getGiraffeBounds();
+  const pickupBounds = getPickupBounds();
   const remainingItems = [];
 
   for (const item of state.items) {
     item.y += item.speed * deltaSeconds;
 
-    if (intersects(item, giraffeBounds)) {
+    const collisionBounds = item.type === "leaf" ? pickupBounds : giraffeBounds;
+
+    if (intersects(item, collisionBounds)) {
       handleItemCollision(item);
       continue;
     }
@@ -464,7 +619,7 @@ function updateLevelPhase(deltaSeconds) {
   for (const powerUp of state.powerUps) {
     powerUp.y += powerUp.speed * deltaSeconds;
 
-    if (intersects(powerUp, giraffeBounds)) {
+    if (intersects(powerUp, pickupBounds)) {
       collectPowerUp();
       continue;
     }
@@ -498,12 +653,12 @@ function updateLevelPhase(deltaSeconds) {
   state.squirrels = remainingSquirrels;
 
   if (state.health <= 0) {
-    endGame("The giraffe got too sick before reaching the boss.");
+    endGame("Your animal got too sick before reaching the boss.");
     return;
   }
 
   if (state.phaseTimeRemaining === 0) {
-    startBossFight();
+    startBossIntro();
   }
 }
 
@@ -514,6 +669,7 @@ function updateBossPhase(deltaSeconds) {
     fireGiraffeBullet();
   }
 
+  state.boss.giraffeShootTimer = Math.max(0, state.boss.giraffeShootTimer - deltaSeconds);
   const bossBounds = getBossBounds();
   const giraffeBounds = getGiraffeBounds();
 
@@ -531,7 +687,7 @@ function updateBossPhase(deltaSeconds) {
     bullet.y += bullet.velocityY * deltaSeconds;
 
     if (bossBounds && intersects(bullet, bossBounds)) {
-      state.boss.health = Math.max(0, state.boss.health - 10);
+      state.boss.health = Math.max(0, state.boss.health - bullet.damage);
       state.score += 20;
       continue;
     }
@@ -552,8 +708,12 @@ function updateBossPhase(deltaSeconds) {
     bullet.y += bullet.velocityY * deltaSeconds;
 
     if (intersects(bullet, giraffeBounds)) {
-      state.boss.giraffeHealth = Math.max(0, state.boss.giraffeHealth - 5);
-      statusBanner.textContent = "The elephant blasted the giraffe!";
+      const elephantDamage = Math.round((5 + (state.level - 1) * 2) * getPlayerConfig().bossDamageMultiplier);
+      state.boss.giraffeHealth = Math.max(0, state.boss.giraffeHealth - elephantDamage);
+      if (state.selectedAnimal === "baby-elephant") {
+        spawnAbilityEffect("elephant-armor", giraffeBounds.x + giraffeBounds.width / 2, giraffeBounds.y + 30);
+      }
+      statusBanner.textContent = "The elephant blasted your animal!";
       continue;
     }
 
@@ -583,6 +743,10 @@ function updateBossPhase(deltaSeconds) {
 }
 
 function update(deltaSeconds) {
+  if (state.selectionOpen) {
+    return;
+  }
+
   if (!state.running) {
     return;
   }
@@ -591,9 +755,20 @@ function update(deltaSeconds) {
 
   if (state.phase === "level") {
     updateLevelPhase(deltaSeconds);
+  } else if (state.phase === "boss-intro") {
+    state.bossIntroTimer = Math.max(0, state.bossIntroTimer - deltaSeconds);
+
+    if (state.bossIntroTimer === 0) {
+      startBossFight();
+    }
   } else {
     updateBossPhase(deltaSeconds);
   }
+
+  state.abilityEffects = state.abilityEffects.filter((effect) => {
+    effect.timer -= deltaSeconds;
+    return effect.timer > 0;
+  });
 
   input.jumpQueued = false;
   input.shootQueued = false;
@@ -602,29 +777,45 @@ function update(deltaSeconds) {
 
 function drawBackground() {
   ctx.clearRect(0, 0, stage.width, stage.height);
+  const isBossSky = state.phase !== "level";
 
-  ctx.fillStyle = state.phase === "boss" ? "#9fc8e2" : "#a5dcff";
+  ctx.fillStyle = isBossSky ? "#556d8a" : "#a5dcff";
   ctx.fillRect(0, 0, stage.width, stage.groundY);
 
-  ctx.save();
-  ctx.translate(stage.width - 72, 72);
-  ctx.fillStyle = "#ffd44d";
-  ctx.beginPath();
-  ctx.arc(0, 0, 28, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = "#f4b728";
-  ctx.lineWidth = 4;
-  for (let i = 0; i < 12; i += 1) {
-    const angle = (Math.PI * 2 * i) / 12;
+  if (isBossSky) {
+    ctx.save();
+    ctx.translate(stage.width - 88, 82);
+    ctx.fillStyle = "#eef4ff";
     ctx.beginPath();
-    ctx.moveTo(Math.cos(angle) * 36, Math.sin(angle) * 36);
-    ctx.lineTo(Math.cos(angle) * 52, Math.sin(angle) * 52);
-    ctx.stroke();
-  }
-  ctx.restore();
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.fill();
 
-  ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(8, -6, 21, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.translate(stage.width - 72, 72);
+    ctx.fillStyle = "#ffd44d";
+    ctx.beginPath();
+    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#f4b728";
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 12; i += 1) {
+      const angle = (Math.PI * 2 * i) / 12;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * 36, Math.sin(angle) * 36);
+      ctx.lineTo(Math.cos(angle) * 52, Math.sin(angle) * 52);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  ctx.fillStyle = isBossSky ? "rgba(71, 84, 102, 0.95)" : "rgba(255, 255, 255, 0.8)";
   for (const [x, y, w] of [
     [96, 72, 84],
     [266, 110, 96],
@@ -638,8 +829,38 @@ function drawBackground() {
     ctx.fill();
   }
 
+  if (isBossSky) {
+    ctx.strokeStyle = "#f9f2a4";
+    ctx.lineWidth = 4;
+    for (const [x, y] of [
+      [106, 86],
+      [552, 92]
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 10, y + 18);
+      ctx.lineTo(x + 2, y + 18);
+      ctx.lineTo(x - 12, y + 40);
+      ctx.stroke();
+    }
+  }
+
   ctx.fillStyle = "#f7f3cb";
   ctx.fillRect(0, stage.groundY, stage.width, stage.height - stage.groundY);
+
+  ctx.strokeStyle = "#75b43b";
+  ctx.lineWidth = 3;
+  for (let x = 20; x < stage.width - 20; x += 28) {
+    const tuftHeight = 12 + (x % 3) * 3;
+    ctx.beginPath();
+    ctx.moveTo(x, stage.groundY + 2);
+    ctx.lineTo(x + 5, stage.groundY - tuftHeight);
+    ctx.moveTo(x + 6, stage.groundY + 4);
+    ctx.lineTo(x + 11, stage.groundY - (tuftHeight - 2));
+    ctx.moveTo(x + 12, stage.groundY + 2);
+    ctx.lineTo(x + 15, stage.groundY - (tuftHeight - 4));
+    ctx.stroke();
+  }
 
   for (const treeX of [14, 728]) {
     ctx.fillStyle = "#7a5124";
@@ -691,6 +912,37 @@ function drawBackground() {
   ctx.textAlign = "center";
   ctx.font = "bold 28px Arial";
   ctx.fillText("Welcome to the Zoo", stage.width / 2, 50);
+
+  if (!isBossSky) {
+    for (const [x, scale] of [
+      [150, 0.34],
+      [360, 0.28],
+      [635, 0.32]
+    ]) {
+      const grazeAngle = 0.24 + Math.sin(state.time * 2.4 + x * 0.02) * 0.16;
+      const grazeBob = Math.sin(state.time * 3.6 + x * 0.03) * 4;
+      const grazeWobble = Math.sin(state.time * 4.2 + x * 0.04) * 1.2;
+
+      ctx.save();
+      ctx.translate(x, stage.groundY - 78 + grazeBob);
+      ctx.rotate(grazeAngle);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = 0.75;
+      drawGiraffeBody(grazeWobble);
+
+      ctx.strokeStyle = "#4a9727";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(66, 146);
+      ctx.lineTo(70, 134);
+      ctx.moveTo(72, 146);
+      ctx.lineTo(76, 132);
+      ctx.moveTo(78, 146);
+      ctx.lineTo(82, 136);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
 }
 
 function drawLeaf(item) {
@@ -938,7 +1190,116 @@ function drawGiraffeBody(wobble) {
   ctx.stroke();
 }
 
-function drawGiraffe() {
+function drawTigerBody(wobble) {
+  ctx.fillStyle = "#f29c38";
+  ctx.fillRect(14, 78, 40, 34);
+  ctx.fillRect(16, 108, 10, 42);
+  ctx.fillRect(42, 108, 10, 42);
+
+  ctx.beginPath();
+  ctx.ellipse(34, 94, 31, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(49 + wobble * 0.5, 66, 20, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#2f1d14";
+  for (const stripeX of [19, 28, 38, 47]) {
+    ctx.beginPath();
+    ctx.moveTo(stripeX, 78);
+    ctx.lineTo(stripeX - 4, 104);
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(13, 88);
+  ctx.quadraticCurveTo(1, 78 + wobble, 7, 58);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f8dfb6";
+  ctx.beginPath();
+  ctx.ellipse(56, 72, 8, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#2f1d14";
+  ctx.beginPath();
+  ctx.arc(54, 64, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBabyElephantBody(wobble) {
+  ctx.fillStyle = "#a7b2c2";
+  ctx.beginPath();
+  ctx.ellipse(34, 94, 34, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(46, 68, 24, 21, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#c1c9d5";
+  ctx.beginPath();
+  ctx.ellipse(23, 67, 12, 16, -0.4, 0, Math.PI * 2);
+  ctx.ellipse(56, 70, 11, 14, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#95a1b0";
+  ctx.fillRect(14, 110, 10, 40);
+  ctx.fillRect(43, 110, 10, 40);
+
+  ctx.strokeStyle = "#7d8794";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(57, 78);
+  ctx.quadraticCurveTo(73, 98 + wobble, 60, 120);
+  ctx.stroke();
+
+  ctx.fillStyle = "#233041";
+  ctx.beginPath();
+  ctx.arc(52, 63, 2.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawLlamaBody(wobble) {
+  ctx.fillStyle = "#f2e0c6";
+  ctx.fillRect(25, 26, 16, 52);
+  ctx.fillRect(16, 74, 34, 38);
+  ctx.fillRect(14, 108, 9, 42);
+  ctx.fillRect(45, 108, 9, 42);
+
+  ctx.beginPath();
+  ctx.ellipse(33, 89, 30, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(34 + wobble * 0.6, 22, 18, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#d8c1a2";
+  for (const [x, y, r] of [
+    [28, 82, 6],
+    [20, 96, 5],
+    [41, 98, 5],
+    [35, 55, 4]
+  ]) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillRect(23, -4, 4, 18);
+  ctx.fillRect(39, -4, 4, 18);
+
+  ctx.fillStyle = "#2a2016";
+  ctx.beginPath();
+  ctx.arc(29, 20, 2.5, 0, Math.PI * 2);
+  ctx.arc(39, 20, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPlayer() {
   const giraffe = state.giraffe;
 
   ctx.save();
@@ -958,10 +1319,36 @@ function drawGiraffe() {
     ctx.translate(giraffe.x + 6, giraffe.baseY + giraffe.height - 2);
     ctx.rotate(Math.PI / 2);
     ctx.translate(0, -giraffe.height);
-    drawGiraffeBody(0);
+    if (state.selectedAnimal === "tiger") {
+      drawTigerBody(0);
+    } else if (state.selectedAnimal === "baby-elephant") {
+      drawBabyElephantBody(0);
+    } else if (state.selectedAnimal === "llama") {
+      drawLlamaBody(0);
+    } else {
+      drawGiraffeBody(0);
+    }
   } else {
     ctx.translate(giraffe.x, giraffe.y);
-    drawGiraffeBody(Math.sin(state.time * 8) * 1.2);
+    const wobble = Math.sin(state.time * 8) * 1.2;
+
+    if (state.selectedAnimal === "tiger" && (input.left || input.right)) {
+      ctx.fillStyle = "rgba(242, 156, 56, 0.28)";
+      ctx.beginPath();
+      ctx.ellipse(10, 94, 20, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 94, 14, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (state.selectedAnimal === "tiger") {
+      drawTigerBody(wobble);
+    } else if (state.selectedAnimal === "baby-elephant") {
+      drawBabyElephantBody(wobble);
+    } else if (state.selectedAnimal === "llama") {
+      drawLlamaBody(wobble);
+    } else {
+      drawGiraffeBody(wobble);
+    }
   }
 
   if (state.phase === "boss") {
@@ -971,6 +1358,46 @@ function drawGiraffe() {
   }
 
   ctx.restore();
+}
+
+function drawAbilityEffects() {
+  for (const effect of state.abilityEffects) {
+    const alpha = effect.timer / 0.45;
+
+    if (effect.kind === "giraffe-reach") {
+      ctx.strokeStyle = `rgba(150, 214, 95, ${alpha})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(effect.x, effect.y + 18);
+      ctx.lineTo(effect.x, effect.y - 24);
+      ctx.moveTo(effect.x - 10, effect.y - 4);
+      ctx.lineTo(effect.x - 2, effect.y - 18);
+      ctx.moveTo(effect.x + 10, effect.y - 4);
+      ctx.lineTo(effect.x + 2, effect.y - 18);
+      ctx.stroke();
+    }
+
+    if (effect.kind === "elephant-armor") {
+      ctx.strokeStyle = `rgba(183, 201, 223, ${alpha})`;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(effect.x, effect.y, 24 + (1 - alpha) * 14, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (effect.kind === "llama-poof") {
+      ctx.fillStyle = `rgba(245, 238, 224, ${alpha})`;
+      for (const [offsetX, offsetY, radius] of [
+        [-10, 0, 8],
+        [0, -6, 10],
+        [10, 1, 7]
+      ]) {
+        ctx.beginPath();
+        ctx.arc(effect.x + offsetX, effect.y + offsetY, radius * alpha + 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
 }
 
 function drawElephantBoss() {
@@ -1064,6 +1491,24 @@ function drawHudHints() {
   ctx.restore();
 }
 
+function drawBossIntroOverlay() {
+  if (state.phase !== "boss-intro") {
+    return;
+  }
+
+  ctx.save();
+  ctx.fillStyle = "rgba(181, 230, 255, 0.82)";
+  ctx.fillRect(0, 0, stage.width, stage.height);
+
+  ctx.fillStyle = "#2f5f85";
+  ctx.textAlign = "center";
+  ctx.font = "bold 46px Arial";
+  ctx.fillText(`Level ${state.level}`, stage.width / 2, 220);
+  ctx.font = "bold 28px Arial";
+  ctx.fillText("Elephant boss incoming!", stage.width / 2, 270);
+  ctx.restore();
+}
+
 function draw() {
   drawBackground();
 
@@ -1095,7 +1540,9 @@ function draw() {
     }
   }
 
-  drawGiraffe();
+  drawPlayer();
+  drawAbilityEffects();
+  drawBossIntroOverlay();
   drawHudHints();
 }
 
@@ -1146,8 +1593,18 @@ window.addEventListener("keyup", (event) => {
 });
 
 restartButton.addEventListener("click", () => {
-  resetGame();
+  if (state.selectedAnimal) {
+    resetGame();
+  } else {
+    openAnimalPicker();
+  }
 });
 
-resetGame();
+for (const animalChoice of animalChoices) {
+  animalChoice.addEventListener("click", () => {
+    startWithAnimal(animalChoice.dataset.animal);
+  });
+}
+
+openAnimalPicker();
 requestAnimationFrame(frame);

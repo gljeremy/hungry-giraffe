@@ -168,7 +168,45 @@ button:hover {
 }
 
 .stage-panel {
+  position: relative;
   padding: 18px;
+}
+
+.animal-picker {
+  position: absolute;
+  inset: 18px 18px auto 18px;
+  z-index: 2;
+  padding: 22px;
+  border-radius: 20px;
+  background: rgba(255, 248, 226, 0.97);
+  border: 2px solid #e4c785;
+  box-shadow: 0 14px 28px rgba(92, 66, 20, 0.18);
+}
+
+.picker-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #6b8f2c;
+}
+
+.animal-picker h2 {
+  margin: 0 0 16px;
+  font-size: 1.8rem;
+}
+
+.animal-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.animal-choice {
+  min-height: 58px;
+  background: linear-gradient(180deg, #f5d081 0%, #d7a34e 100%);
+  color: #5c3f17;
+  box-shadow: 0 8px 16px rgba(143, 102, 33, 0.2);
 }
 
 .stage-summary {

@@ -58,6 +58,16 @@
     </section>
 
     <section class="panel stage-panel">
+      <section class="animal-picker" id="animal-picker">
+        <p class="picker-eyebrow">Choose your hero</p>
+        <h2>Pick your animal</h2>
+        <div class="animal-choice-grid">
+          <button class="animal-choice" type="button" data-animal="giraffe">Giraffe - long reach, takes more damage</button>
+          <button class="animal-choice" type="button" data-animal="tiger">Tiger - super speed, lower health</button>
+          <button class="animal-choice" type="button" data-animal="baby-elephant">Baby Elephant - tougher, but slower</button>
+          <button class="animal-choice" type="button" data-animal="llama">Llama - huge jump and quick shots, weaker attacks</button>
+        </div>
+      </section>
       <div class="stage-summary">
         <span id="level-readout">Level 1</span>
         <span id="phase-readout">15s until boss</span>
@@ -76,7 +86,7 @@
 
         <div class="meter-block compact-meter">
           <div class="meter-label-row">
-            <span>Giraffe boss health</span>
+            <span>Player boss health</span>
             <span id="boss-giraffe-value">50 / 50</span>
           </div>
           <div class="meter-track">
