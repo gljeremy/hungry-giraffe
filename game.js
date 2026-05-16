@@ -6,6 +6,8 @@ if (!ctx) {
 }
 
 const scoreValue = document.getElementById("score");
+const gameSubtitleText = document.getElementById("game-subtitle-text");
+const goodItemLabel = document.getElementById("good-item-label");
 const leavesValue = document.getElementById("leaves-eaten");
 const applesValue = document.getElementById("apples-hit");
 const healthValue = document.getElementById("health-value");
@@ -46,7 +48,7 @@ const ANIMAL_CONFIG = {
     bossHealth: 40,
     leafHeal: 11,
     appleDamage: 18,
-    bossShotDamage: 10,
+    bossShotDamage: 13,
     giraffeShootInterval: 0.38,
     bossDamageMultiplier: 1
   },
@@ -276,6 +278,10 @@ function updateHud() {
   const sickness = 100 - healthPercent;
 
   scoreValue.textContent = String(state.score);
+  goodItemLabel.textContent = state.selectedAnimal === "tiger" ? "Dead bunnies eaten" : "Leaves eaten";
+  gameSubtitleText.textContent = state.selectedAnimal === "tiger"
+    ? "Survive each 15-second level, grab dead bunnies, dodge apples, and jump over squirrels. At the end of every level, fight an elephant boss by shooting with your animal's boss attack."
+    : "Survive each 15-second level, grab leaves, dodge apples, and jump over squirrels. At the end of every level, fight an elephant boss by shooting with your animal's boss attack.";
   leavesValue.textContent = String(state.leavesEaten);
   applesValue.textContent = String(state.applesHit);
   healthValue.textContent = `${Math.round(health)} / ${config.regularMaxHealth}`;
@@ -411,7 +417,9 @@ function handleItemCollision(item) {
     if (state.selectedAnimal === "giraffe") {
       spawnAbilityEffect("giraffe-reach", state.giraffe.x + 34, state.giraffe.y + 26);
     }
-    statusBanner.textContent = "Crunch! Your animal feels stronger after eating a leaf.";
+    statusBanner.textContent = state.selectedAnimal === "tiger"
+      ? "Chomp! The tiger feels stronger after eating a dead bunny."
+      : "Crunch! Your animal feels stronger after eating a leaf.";
     return;
   }
 
@@ -470,7 +478,8 @@ function fireGiraffeBullet() {
     height: 6,
     velocityX: 440,
     velocityY: -180,
-    damage: getPlayerConfig().bossShotDamage
+    damage: getPlayerConfig().bossShotDamage,
+    kind: state.selectedAnimal === "tiger" ? "fireball" : "normal"
   });
 
   state.boss.giraffeShootTimer = state.boss.giraffeShootInterval;
@@ -778,8 +787,13 @@ function update(deltaSeconds) {
 function drawBackground() {
   ctx.clearRect(0, 0, stage.width, stage.height);
   const isBossSky = state.phase !== "level";
+  const thunderPhase = (state.time * 1.7) % 6;
+  const thunderFlash = isBossSky && (
+    (thunderPhase > 5.2 && thunderPhase < 5.34) ||
+    (thunderPhase > 5.42 && thunderPhase < 5.5)
+  );
 
-  ctx.fillStyle = isBossSky ? "#556d8a" : "#a5dcff";
+  ctx.fillStyle = isBossSky ? (thunderFlash ? "#5f86ba" : "#10141d") : "#a5dcff";
   ctx.fillRect(0, 0, stage.width, stage.groundY);
 
   if (isBossSky) {
@@ -815,7 +829,9 @@ function drawBackground() {
     ctx.restore();
   }
 
-  ctx.fillStyle = isBossSky ? "rgba(71, 84, 102, 0.95)" : "rgba(255, 255, 255, 0.8)";
+  ctx.fillStyle = isBossSky
+    ? (thunderFlash ? "rgba(120, 138, 164, 0.95)" : "rgba(53, 61, 74, 0.95)")
+    : "rgba(255, 255, 255, 0.8)";
   for (const [x, y, w] of [
     [96, 72, 84],
     [266, 110, 96],
@@ -830,8 +846,8 @@ function drawBackground() {
   }
 
   if (isBossSky) {
-    ctx.strokeStyle = "#f9f2a4";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = thunderFlash ? "#fff4b0" : "rgba(249, 242, 164, 0.65)";
+    ctx.lineWidth = thunderFlash ? 5 : 3;
     for (const [x, y] of [
       [106, 86],
       [552, 92]
@@ -980,6 +996,42 @@ function drawLeaf(item) {
     ctx.lineTo(direction * 8, 14);
     ctx.stroke();
   }
+
+  ctx.restore();
+}
+
+function drawBunny(item) {
+  ctx.save();
+  ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
+  ctx.rotate(Math.sin((state.time + item.x) * 1.1) * 0.08 - 0.35);
+
+  ctx.fillStyle = "#8f8a84";
+  ctx.beginPath();
+  ctx.ellipse(0, 3, 13, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(10, -1, 7, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(11, -11, 3, 10, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(16, -10, 3, 10, 0.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#6d655d";
+  ctx.beginPath();
+  ctx.arc(12, -2, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#6d655d";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-11, 7);
+  ctx.lineTo(-17, 12);
+  ctx.moveTo(-4, 8);
+  ctx.lineTo(-7, 14);
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -1455,7 +1507,25 @@ function drawElephantBoss() {
 }
 
 function drawBullet(bullet, fillStyle) {
-  ctx.fillStyle = fillStyle;
+  if (bullet.kind === "fireball") {
+    ctx.fillStyle = "#ffb347";
+    ctx.beginPath();
+    ctx.ellipse(
+      bullet.x + bullet.width / 2,
+      bullet.y + bullet.height / 2,
+      bullet.width / 2 + 2,
+      bullet.height / 2 + 2,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.fillStyle = "#ff652f";
+  } else {
+    ctx.fillStyle = fillStyle;
+  }
+
   ctx.beginPath();
   ctx.ellipse(
     bullet.x + bullet.width / 2,
@@ -1522,7 +1592,11 @@ function draw() {
 
   for (const item of state.items) {
     if (item.type === "leaf") {
-      drawLeaf(item);
+      if (state.selectedAnimal === "tiger") {
+        drawBunny(item);
+      } else {
+        drawLeaf(item);
+      }
     } else {
       drawApple(item);
     }
@@ -1593,11 +1667,7 @@ window.addEventListener("keyup", (event) => {
 });
 
 restartButton.addEventListener("click", () => {
-  if (state.selectedAnimal) {
-    resetGame();
-  } else {
-    openAnimalPicker();
-  }
+  openAnimalPicker();
 });
 
 for (const animalChoice of animalChoices) {
